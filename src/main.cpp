@@ -6,23 +6,23 @@
 
 #include "max17048.hpp"
 #include "system_constants.hpp"
-#include "device.hpp"        // g_* globais, perfis, i2cRead16, updateInterval...
-#include "ble_handler.hpp"   // bleInit, nusSend, nusSendLit, g_connected, g_txSubs, g_streamEnabled
-#include "kalman_filter.hpp" // KalmanFilter
-#include "imu.hpp"           // imuInit(), readIMU(), kimuData
-#include "status.hpp"        // statusInit()
+#include "device.hpp"        
+#include "ble_handler.hpp"   
+#include "kalman_filter.hpp"  
+#include "imu.hpp"           
+#include "status.hpp"         
 
-// ================== MÉTRICA (neste TU) ==================
+ 
 static volatile uint32_t s_txWin = 0;
 static uint64_t         s_txTot = 0;
 static uint32_t         s_metricWinStartMs = 0;
 static uint32_t         s_lastMetricEmitMs = 0;
 
-// ================== CONFIG FILTROS (neste TU) ==================
+ 
 static bool  s_kfEnabled = true;
-static const float K_EMA_ALPHA   = 0.20f; // 0.15–0.25 ok
-static const int   K_QUANT_STEP  = 5;     // degraus de 5 mV
-static const int   K_HYST_MV     = 8;     // histerese +-8 mV
+static const float K_EMA_ALPHA   = 0.20f;  
+static const int   K_QUANT_STEP  = 5;     
+static const int   K_HYST_MV     = 8;    
 
 // ================== MUX (mapa validado) ==================
 static inline void muxEnable(bool en){
@@ -113,21 +113,21 @@ static void TaskInsoleTx(void*) {
         if (ok && mv_i >= 0){
           float mv = (float)mv_i;
 
-          // mediana + deadband em FAST/TURBO
+          
           if (g_fastActive){
             mv = s_med[ch].push(mv);
             if (fabsf(mv) < DEAD_BAND_MV_FAST) mv = 0.0f;
           }
 
-          // Kalman
+          
           if (s_kfEnabled) mv = s_kf[ch].update(mv);
 
-          // EMA
+           
           if (!s_emaInit[ch]) { s_ema[ch] = mv; s_emaInit[ch] = true; }
           else                { s_ema[ch] = K_EMA_ALPHA*mv + (1.0f-K_EMA_ALPHA)*s_ema[ch]; }
           mv = s_ema[ch];
 
-          // quantização + histerese
+          
           int32_t qi = (int32_t)lroundf(mv);
           qi = (qi + K_QUANT_STEP/2) / K_QUANT_STEP * K_QUANT_STEP;
 
@@ -145,9 +145,9 @@ static void TaskInsoleTx(void*) {
         if (idx >= (int)sizeof(out) - 80) break;
       }
 
-      // ===== IMU (anexa no mesmo pacote se ativo) =====
+     
       if (imuActive) {
-        readIMU();  // atualiza kimuData
+        readIMU();   
         if (idx < (int)sizeof(out)-2) out[idx++] = SEP_CHAR;
         idx += snprintf(&out[idx], sizeof(out)-idx,
                         "IMU:%.2f~%.2f~%.2f~%.2f~%.2f~%.2f~%.2f",
@@ -159,13 +159,13 @@ static void TaskInsoleTx(void*) {
         idx += snprintf(&out[idx], sizeof(out)-idx, "IMU:OFF");
       }
 
-      // CRLF + envio
+      
       out[idx++] = '\r';
       out[idx++] = '\n';
       nusSend(out, idx);
       Serial.write(out, idx);
 
-      // métrica 1x/s
+     
       s_txWin++; s_txTot++;
       const uint32_t nowMs = millis();
       if ((uint32_t)(nowMs - s_lastMetricEmitMs) >= 1000){
@@ -177,16 +177,16 @@ static void TaskInsoleTx(void*) {
       }
     }
 
-    // período baseado no g_streamHz
+    
     float hz = g_streamHz; if (hz < 1.0f) hz = 1.0f; if (hz > 150.0f) hz = 150.0f;
     uint32_t periodMs = (uint32_t)lroundf(1000.0f / hz);
     vTaskDelayUntil(&last, pdMS_TO_TICKS(periodMs));
   }
 }
 
-// ===== Task de transmissão da bateria (1 Hz) =====
+ 
 static void TaskBatteryTx(void*) {
-  const uint32_t periodMs = 1000; // 1 Hz
+  const uint32_t periodMs = 1000;  
   TickType_t last = xTaskGetTickCount();
 
   for(;;){
@@ -220,34 +220,33 @@ void setup(){
   Serial.begin(115200);
   Serial.println("\nESP32-S3 | Tasks: Palmilha(INA) + IMU + BAT (NimBLE NUS)");
 
-  // I2C dos INAs
+   
   Wire.begin(INA_SDA_PIN, INA_SCL_PIN);
   Wire.setClock(I2C_SPEED);
-
-  // INA perfil default 60 Hz
+ 
   setProfileFAST60();
   updateIntervalFromHz(DEFAULT_STREAM_HZ);
   g_lastSampleUs = micros();
 
-  // BLE
+ 
   bleInit();
 
-  // IMU (inicia em OFF; só entra no pacote quando IMU_ON)
+  
   imuInit();
   imuActive = false;
 
-  // Bateria (MAX17048 em Wire1)
+   
   if (max17048Begin()) {
     Serial.println("[BAT] MAX17048 inicializado.");
   } else {
     Serial.println("[BAT] MAX17048 AUSENTE (vou re-tentar periodicamente).");
   }
 
-  // métricas
+  
   s_metricWinStartMs = millis();
   s_lastMetricEmitMs = s_metricWinStartMs;
 
-  // === Cria tasks ===
+   
   xTaskCreatePinnedToCore(
     TaskInsoleTx, "tx_ina", 6144, nullptr, 2,
     nullptr, ARDUINO_RUNNING_CORE
@@ -257,7 +256,7 @@ void setup(){
     nullptr, ARDUINO_RUNNING_CORE
   );
 
-  // LED de status em task
+  
   statusInit();
 }
 

@@ -3,9 +3,7 @@
 #include "max17048.hpp"
 #include "system_constants.hpp"
 
-// -----------------------------------------------------------------------------
 
-// Use sempre o Wire1 (I2C1) neste driver
 static TwoWire* s_bus = &Wire1;
 static bool s_present = false;
 static bool s_stream  = true;
@@ -14,10 +12,7 @@ static int endTx(TwoWire* bus, bool sendStop = true) {
   return bus->endTransmission(sendStop);
 }
 
-// -----------------------------------------------------------------------------
-// Recuperação simples do barramento (9 pulsos SCL + STOP manual)
-// Faça ANTES do begin() para liberar escravos travados.
-// -----------------------------------------------------------------------------
+
 static void i2cBusRecover(int sclPin, int sdaPin) {
   pinMode(sclPin, OUTPUT_OPEN_DRAIN);
   pinMode(sdaPin, INPUT_PULLUP);
@@ -29,7 +24,7 @@ static void i2cBusRecover(int sclPin, int sdaPin) {
     digitalWrite(sclPin, HIGH); delayMicroseconds(5);
   }
 
-  // STOP: SDA↑ com SCL↑
+  
   pinMode(sdaPin, OUTPUT_OPEN_DRAIN);
   digitalWrite(sdaPin, LOW);  delayMicroseconds(5);
   digitalWrite(sclPin, HIGH); delayMicroseconds(5);
@@ -39,15 +34,12 @@ static void i2cBusRecover(int sclPin, int sdaPin) {
   pinMode(sclPin, INPUT_PULLUP);
 }
 
-// -----------------------------------------------------------------------------
-// I2C helpers (sempre em s_bus / Wire1)
-// Tenta repeated-start; se falhar, usa STOP/START.
-// -----------------------------------------------------------------------------
+
 static bool readU16(uint8_t reg, uint16_t &out) {
   // A) repeated-start
   s_bus->beginTransmission(MAX17048_I2C_ADDR);
   s_bus->write(reg);
-  int e = endTx(s_bus, false); // sem STOP
+  int e = endTx(s_bus, false); 
   if (e == 0 && s_bus->requestFrom((int)MAX17048_I2C_ADDR, 2) == 2) {
     uint8_t msb = s_bus->read();
     uint8_t lsb = s_bus->read();
@@ -55,13 +47,12 @@ static bool readU16(uint8_t reg, uint16_t &out) {
     return true;
   }
 
-  // B) STOP/START
   (void)endTx(s_bus, true);
   delayMicroseconds(80);
 
   s_bus->beginTransmission(MAX17048_I2C_ADDR);
   s_bus->write(reg);
-  e = endTx(s_bus, true); // STOP
+  e = endTx(s_bus, true); 
   if (e != 0) {
     Serial.printf("[MAX17048] endTransmission(WRITE, STOP) err=%d\n", e);
     return false;
@@ -82,8 +73,8 @@ static bool readU16(uint8_t reg, uint16_t &out) {
 static bool writeU16(uint8_t reg, uint16_t val) {
   s_bus->beginTransmission(MAX17048_I2C_ADDR);
   s_bus->write(reg);
-  s_bus->write((uint8_t)((val >> 8) & 0xFF)); // MSB
-  s_bus->write((uint8_t)(val & 0xFF));        // LSB
+  s_bus->write((uint8_t)((val >> 8) & 0xFF));
+  s_bus->write((uint8_t)(val & 0xFF));       
   int e = endTx(s_bus, true);
   if (e != 0) {
     Serial.printf("[MAX17048] endTransmission(WRITE) err=%d\n", e);
@@ -102,14 +93,14 @@ static bool pingAddr() {
 // API
 // -----------------------------------------------------------------------------
 bool max17048Begin() {
-  // 1) Recupera barramento ANTES do begin
+
   i2cBusRecover(MB_SCL_PIN, MB_SDA_PIN);
 
-  // 2) Puxe para alto (lembrete: use pull-ups externos 4k7 em SDA/SCL!)
+  
   pinMode(MB_SDA_PIN, INPUT_PULLUP);
   pinMode(MB_SCL_PIN, INPUT_PULLUP);
 
-  // 3) Inicia I2C1 nos pinos definidos (100 kHz primeiro)
+  
   bool ok = Wire1.begin(MB_SDA_PIN, MB_SCL_PIN, 100000);
   if (!ok) {
     Serial.println("[MAX17048] Wire1.begin() falhou.");
@@ -120,21 +111,21 @@ bool max17048Begin() {
   Wire1.setTimeOut(50);
   delay(2);
 
-  // 4) Ping no endereço do MAX17048
+
   s_present = pingAddr();
   if (!s_present) {
     Serial.printf("[MAX17048] Nao respondeu em 0x%02X (verifique pinos/pull-ups).\n", MAX17048_I2C_ADDR);
-    return false;  // <- retorna false na falha (corrigido)
+    return false;  
   }
 
-  // 5) Leitura de VERSION para confirmar link
+ 
   uint16_t ver = 0;
   if (readU16(MAX17048_REG_VERSION, ver)) {
     Serial.printf("[MAX17048] OK em 0x%02X. VERSION=0x%04X\n",
                   MAX17048_I2C_ADDR, ver);
   } else {
     Serial.println("[MAX17048] ACK, mas falhou ler VERSION.");
-    // Ainda assim está presente; fica a seu critério retornar false aqui.
+   
   }
 
   return true;
@@ -162,7 +153,7 @@ bool max17048ReadSOC(float &pct) {
 
 bool max17048QuickStart() {
   if (!s_present) return false;
-  // QuickStart: escrever 0x4000 em MODE (0x06)
+
   if (!writeU16(MAX17048_REG_MODE, 0x4000)) {
     Serial.println("[MAX17048] Falha ao enviar QuickStart.");
     return false;

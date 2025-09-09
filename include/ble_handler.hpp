@@ -17,6 +17,4 @@ void bleInit();
 void bleStartAdvertising();
 void nusSend(const char* buf, size_t n);
 static inline void nusSendLit(const char* s){ nusSend(s, strlen(s)); }
-
-// Implementado no main.cpp (app)
 void bleHandleCommand(const String& s);

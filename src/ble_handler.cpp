@@ -1,11 +1,9 @@
 #include <Arduino.h>
 #include <NimBLEDevice.h>
 #include "ble_handler.hpp"
-#include "device.hpp"
-// Seu cabeçalho com constantes (nome do device/UUIDs)
+#include "device.hpp" 
 #include "system_constants.hpp"
-
-// ===== Definições (resolvem os "undefined reference") =====
+ 
 NimBLEServer*         g_server   = nullptr;
 NimBLEService*        g_service  = nullptr;
 NimBLECharacteristic* g_rxChar   = nullptr;
@@ -14,20 +12,18 @@ NimBLECharacteristic* g_txChar   = nullptr;
 volatile bool         g_connected = false;
 volatile uint16_t     g_txSubs    = 0;
 volatile bool         g_streamEnabled = true;
-
-// Notificação NUS
+ 
 void nusSend(const char* buf, size_t n){
   if(!g_txChar || g_txSubs == 0) return;
   g_txChar->setValue((uint8_t*)buf, n);
   g_txChar->notify();
 }
 
-// ===== Callbacks (mantidos aqui para simplificar a linkagem) =====
+ 
 class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* srv, NimBLEConnInfo& info) override {
     g_connected = true;
-    // Se sua build tiver updateConnParams, pode tentar:
-    // srv->updateConnParams(info, 6, 12, 0, 400);
+    
     NimBLEDevice::startAdvertising();
   }
   void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
@@ -36,7 +32,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
   }
 };
 
-extern void bleHandleCommand(const String&); // do main.cpp
+extern void bleHandleCommand(const String&); 
 
 class TxCallbacks : public NimBLECharacteristicCallbacks {
   void onSubscribe(NimBLECharacteristic*, NimBLEConnInfo&, uint16_t subValue) override {
@@ -53,7 +49,7 @@ class RxCallbacks : public NimBLECharacteristicCallbacks {
   }
 };
 
-// ===== Advertising =====
+ 
 void bleStartAdvertising(){
   NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
 
@@ -66,12 +62,12 @@ void bleStartAdvertising(){
 
   adv->setAdvertisementData(advData);
   adv->setScanResponseData(srData);
-  adv->setMinInterval(160);   // 100 ms
-  adv->setMaxInterval(320);   // 200 ms
+  adv->setMinInterval(160);   
+  adv->setMaxInterval(320);    
   adv->start();
 }
 
-// ===== Init BLE/NUS =====
+ 
 void bleInit(){
   NimBLEDevice::init(DEVICE_NAME);
   NimBLEDevice::setPower(ESP_PWR_LVL_P9);

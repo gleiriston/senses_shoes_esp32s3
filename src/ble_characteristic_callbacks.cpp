@@ -3,13 +3,13 @@
 #include "ble_characteristic_callbacks.hpp"
 #include "ble_handler.hpp"
 
-// Variáveis globais definidas em ble_handler.cpp
+ 
 extern volatile uint16_t g_txSubs;
 
-// Handler da sua aplicação para comandos de texto (definido no main.cpp)
+ 
 extern void bleHandleCommand(const String& s);
 
-// ===== TX (notify) =====
+ 
 void TxCallbacks::onSubscribe(NimBLECharacteristic* /*c*/,
                               NimBLEConnInfo& /*info*/,
                               uint16_t subValue) {
@@ -31,6 +31,6 @@ void RxCallbacks::onWrite(NimBLECharacteristic* c, NimBLEConnInfo& /*info*/) {
   s.replace("\r", "");
   s.replace("\n", "");
 
-  // Encaminha o comando para sua lógica de aplicação (no main.cpp)
+
   bleHandleCommand(s);
 }

@@ -1,21 +1,21 @@
 #include "device.hpp"
 #include "system_constants.hpp"
-#include "ble_handler.hpp"   // nusSend / nusSendLit / g_streamEnabled
+#include "ble_handler.hpp"   
 #include <Arduino.h>
 #include "max17048.hpp"
 
 
-// ===== DEFINIÇÕES ÚNICAS =====
-DeviceState device;               // único dono do estado
-bool imuActive = false;            // IMU começa ativo por padrão
+ 
+DeviceState device;               
+bool imuActive = false;            
 
 float     g_streamHz     = DEFAULT_STREAM_HZ;
 uint32_t  g_intervalUs   = 0;
 uint32_t  g_lastSampleUs = 0;
 
-uint16_t  g_convWaitUs   = 220;   // FAST60 default
-uint16_t  g_muxSettleUs  = 120;   // FAST60 default
-bool      g_fastActive   = true;  // FAST/TURBO vs NORMAL
+uint16_t  g_convWaitUs   = 220;   
+uint16_t  g_muxSettleUs  = 120;    
+bool      g_fastActive   = true;   
 bool      g_turboMode    = false;
 
 volatile uint8_t g_pendingInaCfg = CFG_NONE;
@@ -105,10 +105,6 @@ void bleHandleCommand(const String &s) {
   // IMU
   if (s.equalsIgnoreCase("IMU_ON"))  { imuActive = true;  nusSendLit("IMU:ON\r\n");  return; }
   if (s.equalsIgnoreCase("IMU_OFF")) { imuActive = false; nusSendLit("IMU:OFF\r\n"); return; }
-
-  // Kalman (se você preferir guardar no device, troque g_kfEnabled por um flag seu)
-  if (s.equalsIgnoreCase("KF_ON"))  { /* habilite seu filtro global aqui */ nusSendLit("KF:ON\r\n");  return; }
-  if (s.equalsIgnoreCase("KF_OFF")) { /* desabilite seu filtro global aqui */ nusSendLit("KF:OFF\r\n"); return; }
 
   // Perfis (mudam INA e taxa)
   if (s.equalsIgnoreCase("PD_LOW")) {
